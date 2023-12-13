@@ -118,7 +118,7 @@ def resize_padding(image, height, width):
     return image
 
 
-batch_size = 32
+batch_size = 64
 padding_token = 99
 image_width = 224
 image_height = 224
@@ -158,15 +158,17 @@ test_ds = dataset_prepare(test_img_paths, test_labels_cleaned)
 
 
 def CTCLoss(y_true, y_pred):
-    input_length = tf.ones(tf.shape(y_pred)[0], dtype='int64') * tf.cast(tf.shape(y_pred)[1], dtype='int64')
-    label_length = tf.ones(tf.shape(y_true)[0], dtype='int64') * tf.cast(tf.shape(y_true)[1], dtype='int64')
+    input_length = tf.math.count_nonzero(tf.cast(y_pred, tf.int64), dtype=tf.int64)
+    label_length = tf.math.count_nonzero(tf.cast(y_true, tf.int64), dtype=tf.int64)
     loss = keras.backend.ctc_batch_cost(y_true, y_pred, input_length, label_length)
     return loss
 
+
 # train model
+# can try keras.losses.CategoricalCrossentropy() for loss
 epochs = 10
-model = EfficientNetB0(weights=None, classes=19)
-model.compile(optimizer="adam", loss=CTCLoss, metrics=["accuracy"])
+model = EfficientNetB0(weights=None, classes=19, include_top=True, classifier_activation='softmax')
+model.compile(optimizer="adam", loss=keras.losses.CategoricalCrossentropy(), metrics=["accuracy"])
 history = model.fit(x=train_ds, epochs=epochs, validation_data=val_ds)
 model.save('model.keras')
 
